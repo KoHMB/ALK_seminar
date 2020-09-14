@@ -20,6 +20,7 @@ knitr::opts_chunk$set(echo = TRUE)
 - **nnet**: 多項分布関連に必要
 
 
+
 ```{r, eval=FALSE}
 
 devtools::install_github("zeloff/ALKr")
@@ -129,6 +130,7 @@ rowSums(hom$otoliths[[1]])
 
 
 ![Equation of the classic(forward) ALK](eq1.png) 
+
 $p_{j}$が年齢$j$の漁獲尾数の割合
 $p_{ij}$が年齢$j$、体長$i$の漁獲尾数の割合
 $p_{j|i}$が体長$i$中の漁獲尾の各年齢についての割合
@@ -224,6 +226,7 @@ round(alk, 2)
 ### ALKの推定（モデル）
 
 先の観測値の割り算ALKには問題点が大きく2つある
+
 - 体長階級内での年齢の変動が大きいことと、その中でのサンプル数が少ないことから、奇妙な年齢内体長組成が生じることがある（きれいな山形にならない）
 - 体長階級内に観測値がない（150cmでどの年齢も個体数0とか）
 
@@ -249,7 +252,7 @@ row.names(alk_mlr) <- length_tmp
 round(alk_mlr, 2)
 ```
 
-80cm以降、観測地の割り算と値が変わっていて、少しスムージングされたことがわかる。
+80cm以降、観測値の割り算と値が変わっていて、少しスムージングされたことがわかる。
 スムージングされている方が、らしいなと感じでしまうのは人の性でしょうか。
 
 ### グラフィックス
@@ -301,7 +304,7 @@ alkAgeDist(alk, lenA.n = rowSums(alk_freq), len.n = length_n)
 としたけど、このデータの型だと**ALKr**に適用できなかったので、**ALKr**のデータを**FSA**の`alkAgeDist`に当てはめてみた
 
 ![CreekChub (from Wikipedia)](photo_CreekChub.jpg) 
-まさかの淡水魚。コイの仲間で、カワムツとかアブラハヤに似てますね。一応北米固有属みたいです。
+ちなみにCreek Chubはまさかの淡水魚。コイの仲間で、カワムツとかアブラハヤに似てますね。北米固有属っぽいです。
 
 ```{r}
 alkAgeDist(ALK1_1@alk,

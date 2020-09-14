@@ -19,14 +19,18 @@ knitr::opts_chunk$set(echo = TRUE)
 - **FSA**: Derek Ogleさんが作ったパッケージ。水産資源解析のある程度のことはできそう。資源動態モデルとかはほとんどない。 http://derekogle.com/IFAR/
 - **nnet**: 多項分布関連に必要
 
+
 ```{r, eval=FALSE}
+
 devtools::install_github("zeloff/ALKr")
 devtools::install_github("droglenc/FSAdata")
 install.packages(FSA)
 install.packages(magrittr)
 install.packages(dplyr)
 install.packages(nnet)
+
 ```
+
 
 ```{r}
 library(ALKr)
@@ -43,6 +47,7 @@ library(nnet)
 そもそもALKとはAge-Length Key（年齢体長相関表と日本語では言うそうです）の略称。読んで字の通り、年齢と体長の関係を表すもので、漁獲物の年齢組成を推定するのに用いられます。
 
 一般に、
+
 - 年齢査定は労力がかかる
 - 体長測定は比較的楽（パンチングとか）
 
@@ -50,6 +55,7 @@ library(nnet)
 
 
 実際には2つのサンプリングルールに基づいて行われており、
+
 - length frequencyサンプル
 - age-lengthサンプル
 
@@ -67,7 +73,7 @@ VPAでは**真の年齢別漁獲尾数**であると仮定して、各コホー�
 ## ALKの種類
 
 ### 1.The forward ALK
-age-lengthサブサンプル中の、体長階級内の年齢の比率を計算(ex. 10cm-14.9cmのサンプルは0歳:1際:2際=5:2:1)
+age-lengthサブサンプル中の、体長階級内の年齢の比率を計算(ex. 10cm-14.9cmのサンプルは0歳:1歳:2歳=5:2:1)
 
 => length frequencyサンプル内の個体数で引き伸ばす
 
@@ -83,8 +89,8 @@ forwardとinverseの重ね技。強そう。詳細は不勉強です。
 # ALKの推定ができるRのパッケージの紹介
 ## **ALKr**
 
-https://www.iccat.int/GBYP/Docs/Modelling_Phase_3_R_Package_ALKr.pdf
-ここに、**ALKr**の使い方とかまとまってるので、詳細知りたければこちらをご確認ください。
+以下に、**ALKr**の使い方とかまとまってるので、詳細知りたければこちらをご確認ください。https://www.iccat.int/GBYP/Docs/Modelling_Phase_3_R_Package_ALKr.pdf
+
 
 とりあえず、**ALKr**パッケージのデータを見てみましょう。
 
@@ -106,7 +112,7 @@ hom$F1992
 #rowSums(hom$N1992)でも同じものが得られます
 ```
 
-これがage-lengthサブサンプルから各体長階級中の各年齢の尾数を出したものです。
+`hom$otolinth`がage-lengthサブサンプルから各体長階級中の各年齢の尾数を出したものです。
 実際のデータをブートストラップ法で疑似生成したシミュレーションデータみたいです。
 
 ```{r}
@@ -122,11 +128,14 @@ rowSums(hom$otoliths[[1]])
 ```
 
 
+![Equation of the classic(forward) ALK](eq1.png) 
+$p_{j}$が年齢$j$の漁獲尾数の割合
+$p_{ij}$が年齢$j$、体長$i$の漁獲尾数の割合
+$p_{j|i}$が体長$i$中の漁獲尾の各年齢についての割合
+
+
+
 **`classic_ALK`とすると一番基本的なALK計算がされます。**
-
-$p_{ia}=n_{ia}/n_{i.}$
-
-ここで、$p_{ia}$は年齢$a$中の体長階級$i$の個体の割合を表す。
 
 ```{r}
 
@@ -291,7 +300,7 @@ alkAgeDist(alk, lenA.n = rowSums(alk_freq), len.n = length_n)
 
 としたけど、このデータの型だと**ALKr**に適用できなかったので、**ALKr**のデータを**FSA**の`alkAgeDist`に当てはめてみた
 
-![CreekChub (from Wikipedia)](photo_CreekChub.png) 
+![CreekChub (from Wikipedia)](photo_CreekChub.jpg) 
 まさかの淡水魚。コイの仲間で、カワムツとかアブラハヤに似てますね。一応北米固有属みたいです。
 
 ```{r}

@@ -69,12 +69,17 @@ ALKの原理
 そもそもALKとはAge-Length
 Key（年齢体長相関表と日本語では言うそうです）の略称。読んで字の通り、年齢と体長の関係を表すもので、漁獲物の年齢組成を推定するのに用いられます。
 
-一般に、 - 年齢査定は労力がかかる - 体長測定は比較的楽（パンチングとか）
+一般に、
+
+-   年齢査定は労力がかかる
+-   体長測定は比較的楽（パンチングとか）
 
 というような生物統計収集の特性から、体長を年齢に変換しようというのが始まりかと思います。
 
-実際には2つのサンプリングルールに基づいて行われており、 - length
-frequencyサンプル - age-lengthサンプル
+実際には2つのサンプリングルールに基づいて行われており、
+
+-   length frequencyサンプル
+-   age-lengthサンプル
 
 とあるそうです。前者は漁獲物から一定量サンプリングして長さの組成を得るもの。
 一方後者は、length
@@ -94,7 +99,7 @@ ALKの種類
 ### 1.The forward ALK
 
 age-lengthサブサンプル中の、体長階級内の年齢の比率を計算(ex.
-10cm-14.9cmのサンプルは0歳:1際:2際=5:2:1)
+10cm-14.9cmのサンプルは0歳:1歳:2歳=5:2:1)
 
 =&gt; length frequencyサンプル内の個体数で引き伸ばす
 
@@ -115,8 +120,7 @@ ALKの推定ができるRのパッケージの紹介
 **ALKr**
 --------
 
-<a href="https://www.iccat.int/GBYP/Docs/Modelling_Phase_3_R_Package_ALKr.pdf" class="uri">https://www.iccat.int/GBYP/Docs/Modelling_Phase_3_R_Package_ALKr.pdf</a>
-ここに、**ALKr**の使い方とかまとまってるので、詳細知りたければこちらをご確認ください。
+以下に、**ALKr**の使い方とかまとまってるので、詳細知りたければこちらをご確認ください。<a href="https://www.iccat.int/GBYP/Docs/Modelling_Phase_3_R_Package_ALKr.pdf" class="uri">https://www.iccat.int/GBYP/Docs/Modelling_Phase_3_R_Package_ALKr.pdf</a>
 
 とりあえず、**ALKr**パッケージのデータを見てみましょう。
 
@@ -178,7 +182,7 @@ frequencyサンプルの結果だと思います。
 
     #rowSums(hom$N1992)でも同じものが得られます
 
-これがage-lengthサブサンプルから各体長階級中の各年齢の尾数を出したものです。
+`hom$otolinth`がage-lengthサブサンプルから各体長階級中の各年齢の尾数を出したものです。
 実際のデータをブートストラップ法で疑似生成したシミュレーションデータみたいです。
 
     length(hom$otoliths)
@@ -233,11 +237,12 @@ frequencyサンプルの結果だと思います。
     ## 33 34 35 36 37 38 39 40 41 
     ## 10 10 10 10 10 10 10 10 10
 
+![Equation of the classic(forward) ALK](eq1.png)
+*p*<sub>*j*</sub>が年齢*j*の漁獲尾数の割合
+*p*<sub>*i**j*</sub>が年齢*j*、体長*i*の漁獲尾数の割合
+*p*<sub>*j*|*i*</sub>が体長*i*中の漁獲尾の各年齢についての割合
+
 **`classic_ALK`とすると一番基本的なALK計算がされます。**
-
-*p*<sub>*i**a*</sub> = *n*<sub>*i**a*</sub>/*n*<sub>*i*.</sub>
-
-ここで、*p*<sub>*i**a*</sub>は年齢*a*中の体長階級*i*の個体の割合を表す。
 
     ALK1_1 <- classic_ALK(hom$otoliths[[1]], #各体長級の年齢査定結果 
                           hom$F1992          #各体長級のサンプリング尾数
@@ -660,7 +665,7 @@ frequencyサンプルの体長組成データにかけたものを、年齢に�
 
 としたけど、このデータの型だと**ALKr**に適用できなかったので、**ALKr**のデータを**FSA**の`alkAgeDist`に当てはめてみた
 
-![CreekChub (from Wikipedia)](photo_CreekChub.png)
+![CreekChub (from Wikipedia)](photo_CreekChub.jpg)
 まさかの淡水魚。コイの仲間で、カワムツとかアブラハヤに似てますね。一応北米固有属みたいです。
 
     alkAgeDist(ALK1_1@alk,

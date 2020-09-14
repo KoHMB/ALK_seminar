@@ -158,12 +158,150 @@ summary(ALK1_1)
 
 ## **FSA**
 Ogleが開発したパッケージで、この中でもALKの計算が可能。
+パッケージ内のデータもtidy型式で、リスト中心な**ALKr**よりも使いやすい印象。
+本もあって、説明も丁寧なせいか、こっちの方がしっくり来てます。
+
+
+### データの抽出と確認
+データは**FSAdata**パッケージに入っている。
 
 ```{r}
 data(CreekChub)
-
+head(CreekChub)
+tail(CreekChub)
+CreekChub$age
 ```
 
+この`CreekChub`データには漁獲物から一回目のサンプルをして魚体長測定だけしたデータ（`$age`がNAになっている箇所）と
+さらにサブサンプルとして年齢査定を行ったものが混ざっている。
+
+
+10㎝刻みのビンにしていきたい場合は以下のようにすると、
+
+```{r}
+CreekChub %<>% mutate(lcat10 = lencat(len, w=10))
+head(CreekChub)
+tail(CreekChub)
+table(CreekChub$lcat10)
+```
+
+
+魚体長のみ記録されたサンプル（length frequency sample）と、年齢査定がされているサブサンプル（age-length sample）にオブジェクトを分けると、
+
+```{r}
+sample1 <- filter(CreekChub, is.na(age))
+sample1$age
+sample2 <- filter(CreekChub, !is.na(age))
+sample2$age
+```
+
+
+### ALKの推定（割算）
+
+まずは単純にage-length sample(`sample2`)で各魚体長階級内の各年齢の観測尾数を見る。
+
+```{r}
+(alk_freq <- xtabs(~lcat10 + age, data = sample2))
+```
+
+これを割合に変換してみたいなら`prop.table`という関数があるらしい。
+
+```{r}
+alk <- prop.table(alk_freq, margin = 1)
+round(alk, 2)
+```
+
+
+### ALKの推定（モデル）
+
+先の観測値の割り算ALKには問題点が大きく2つある
+- 体長階級内での年齢の変動が大きいことと、その中でのサンプル数が少ないことから、奇妙な年齢内体長組成が生じることがある（きれいな山形にならない）
+- 体長階級内に観測値がない（150cmでどの年齢も個体数0とか）
+
+
+解決法の一つとして多項ロジスティック回帰モデルを使う例がある。
+（二項ロジスティックモデルの拡張版）
+
+**nnet**パッケージの`multinom`関数を使うと多項ロジスティック回帰モデルが使える。
+
+```{r}
+res_mlr <- multinom(age ~ lcat10, data = sample2, maxit = 500)
+```
+
+あとはCPUE標準化とかと同じく、この結果から予測値を出すと。
+予測値を出す関数は`predict`で、予測のために体長区分だけ決めておいてあげないといけない。
+
+```{r}
+length_tmp <- seq(40, 200, 10)
+alk_mlr <- predict(res_mlr, 
+                   data.frame(lcat10 = length_tmp),
+                   type = "probs")
+row.names(alk_mlr) <- length_tmp
+round(alk_mlr, 2)
+```
+
+80cm以降、観測地の割り算と値が変わっていて、少しスムージングされたことがわかる。
+スムージングされている方が、らしいなと感じでしまうのは人の性でしょうか。
+
+### グラフィックス
+
+作図関数まであるのは親切設計だなと思いました。はい。
+
+`type`引数でいろいろ図示方法を設定できるみたいです。
+
+```{r}
+alkPlot(alk, type = "area", pal = "gray", showLegend = TRUE,
+        leg.cex = .7, xlab = "Total Length(mm)")
+```
+
+せっかくなのでバブルプロットでスムージング有無の結果を比較してみましょう
+
+```{r}
+alkPlot(alk, type = "bubble", xlab = "Total Length(mm)")
+alkPlot(alk_mlr, type = "bubble", xlab = "Total Length(mm)")
+```
+
+### ALKの適用
+
+得られたALKを使って、length frequencyサンプルに引き伸ばしていく手順。
+目標は漁獲物内の年齢組成を出すことだから！
+
+```{r}
+(length_n <- xtabs(~lcat10, data = CreekChub))
+(tmp <- sweep(alk, MARGIN = 1, FUN = "*", STATS = length_n))
+```
+
+最後に、ALKをlength frequencyサンプルの体長組成データにかけたものを、年齢に対して足し合わせれば、各年齢の個体数頻度が出てくる。
+
+```{r}
+(ad1 <- colSums(tmp))
+round(prop.table(ad1), 3)
+```
+
+と手計算でもできるけど、`alkAgeDist`関数を使えば、一発で出る。
+
+```{r}
+alkAgeDist(alk, lenA.n = rowSums(alk_freq), len.n = length_n)
+```
+
+
+## **ALKr**と**FSA**の比較
+
+**ALKr**パッケージのデータがいまいちわからなかったので、**FSA**の`CreekChub`データで最後の各年齢の割合と標準偏差を比較しよう
+
+としたけど、このデータの型だと**ALKr**に適用できなかったので、**ALKr**のデータを**FSA**の`alkAgeDist`に当てはめてみた
+
+![CreekChub (from Wikipedia)](photo_CreekChub.png) 
+まさかの淡水魚。コイの仲間で、カワムツとかアブラハヤに似てますね。一応北米固有属みたいです。
+
+```{r}
+alkAgeDist(ALK1_1@alk,
+           lenA.n = rowSums(hom$otoliths[[1]]),
+           len.n = hom$F1992)
+(summary(ALK1_1))
+```
+
+こんな感じで各年齢の割合$p_{j}$の平均値はほとんど同じ結果となった
 
 
 

@@ -33,7 +33,7 @@ install.packages(nnet)
 ```
 
 
-```{r}
+```{r, message=FALSE}
 library(ALKr)
 library(FSA)
 library(FSAdata)

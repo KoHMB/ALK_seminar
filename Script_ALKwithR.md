@@ -36,28 +36,9 @@ Ogleさんが作ったパッケージ。水産資源解析のある程度のこ�
 
     library(ALKr)
     library(FSA)
-
-    ## ## FSA v0.8.30. See citation('FSA') if used in publication.
-    ## ## Run fishR() for related website and fishR('IFAR') for related book.
-
     library(FSAdata)
-
-    ## ## FSAdata v0.3.8.9000. See ?FSAdata to find data for specific fisheries analyses.
-
     library(magrittr)
     library(dplyr)
-
-    ## 
-    ## Attaching package: 'dplyr'
-
-    ## The following objects are masked from 'package:stats':
-    ## 
-    ##     filter, lag
-
-    ## The following objects are masked from 'package:base':
-    ## 
-    ##     intersect, setdiff, setequal, union
-
     library(nnet)
 
 ALKの原理と種類

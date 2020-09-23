@@ -20,7 +20,7 @@
 
 ### 2. ALK手法の現在とこれから（真鍋）
 - 現在水研が行っているALKについて
-- これから水研が取り組むALKについて
+- (これから水研が取り組むALKについて)
 - 異なるALK手法について
   - the inverse ALK
   - the combined forward-inverse ALK

@@ -15,6 +15,7 @@
         -   [グラフィックス](#グラフィックス)
         -   [ALKの適用](#alkの適用)
     -   [**ALKr**と**FSA**の比較](#alkrとfsaの比較)
+-   [参考文献](#参考文献)
 
 必要なパッケージ
 ----------------
@@ -27,12 +28,12 @@ Ogleさんが作ったパッケージ。水産資源解析のある程度のこ�
 <a href="http://derekogle.com/IFAR/" class="uri">http://derekogle.com/IFAR/</a>
 - **nnet**: 多項分布関連に必要
 
-    devtools::install_github("zeloff/ALKr")
-    devtools::install_github("droglenc/FSAdata")
-    install.packages(FSA)
-    install.packages(magrittr)
-    install.packages(dplyr)
-    install.packages(nnet)
+    #devtools::install_github("zeloff/ALKr")
+    #devtools::install_github("droglenc/FSAdata")
+    #install.packages(FSA)
+    #install.packages(magrittr)
+    #install.packages(dplyr)
+    #install.packages(nnet)
 
     library(ALKr)
     library(FSA)
@@ -147,8 +148,7 @@ ALKの推定ができるRのパッケージの紹介
 
 シミュレーションデータらしいですが、ポルトガルの底曳網がイメージらしいです。
 行が体長階級、列が年齢です。 これはlength
-frequencyサンプルの結果だと思います。
-これから下で、ALKとか出していくので。
+frequencyサンプルの結果です（シミュレーションで複製したデータなので年齢も得られています）。
 
 各体長階級でまとめた漁獲尾数が以下のようになります。
 
@@ -267,6 +267,9 @@ frequencyサンプルの結果だと思います。
     ## 39 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.1 0.4 0.1 0.4 0.0 0.0 0.0
     ## 40 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.2 0.1 0.3 0.2 0.1 0.1 0.0 0.0
     ## 41 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.3 0.1 0.3 0.1 0.1 0.1
+
+<a href="mailto:S3クラスのファイルなので@でデータを引き出します" class="email">S3クラスのファイルなので@でデータを引き出します</a>。
+慣れなくて不便です。
 
 例として、体長クラス19の結果を見ると、
 
@@ -562,7 +565,6 @@ sample(`sample2`)で各魚体長階級内の各年齢の観測尾数を見る。
     ## 200 0.0 0.00 0.00 0.00 1.00
 
 80cm以降、観測値の割り算と値が変わっていて、少しスムージングされたことがわかる。
-スムージングされている方が、らしいなと感じでしまうのは人の性でしょうか。
 
 ### グラフィックス
 
@@ -575,7 +577,9 @@ sample(`sample2`)で各魚体長階級内の各年齢の観測尾数を見る。
 
 ![](Script_ALKwithR_files/figure-markdown_strict/unnamed-chunk-17-1.png)
 
-せっかくなのでバブルプロットでスムージング有無の結果を比較してみましょう
+せっかくなのでバブルプロットでスムージング有無の結果を比較してみましょう。
+
+スムージングされている方が、らしいなと感じでしまうのは人の性でしょうか。
 
     alkPlot(alk, type = "bubble", xlab = "Total Length(mm)")
 
@@ -696,3 +700,22 @@ Chubはまさかの淡水魚。コイの仲間で、カワムツとかアブラ�
     ## Method: Classic ALK
 
 こんな感じで各年齢の割合*p*<sub>*j*</sub>の平均値はほとんど同じ結果となった
+
+参考文献
+========
+
+-   Ogle, D. H.(2016) Introductory Fisheries Analyses with R. CRC Press,
+    UK.
+-   Ailloud, L. E. & Hoenig, J. M.(2019) A general theory of age-length
+    keys: combining the forward and inverse keys to estimate age
+    composition from incomplete data. ICES Journal of Marine Science,
+    76: 1515-1523.
+-   Murta, A. G., Loff, J. F., Neves, M., and Wise, L.(2016) ALKr: A R
+    package of methods based on age-length keys to estimate the age
+    structure of fish populations.
+    <a href="https://www.iccat.int/GBYP/Docs/Modelling_Phase_3_R_Package_ALKr.pdf" class="uri">https://www.iccat.int/GBYP/Docs/Modelling_Phase_3_R_Package_ALKr.pdf</a>
+-   Gerritsen, H. D., McGrath, D., and Lordan, C. 2006. A simple method
+    for comparing age-length keys reveals significant regional
+    differences within a single stock of haddock (Melanogrammus
+    aeglefinus). ICES Journal of Marine Science, 63: 1096-1100.
+-   田中昌一(1985) 水産資源学総論. 恒星社厚生閣. 東京.

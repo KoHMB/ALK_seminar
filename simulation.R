@@ -73,15 +73,29 @@ Sample_true <- data.frame(id = 1:length(age_vec_true),
 ##-------------------------------------------------------------------##
 #  Selectivity アイデアないので、とりあえず体長を指定して抽出
 
-#double_norm <- function(x, b1=300, b2=0.02, b3=400, b4=0.02){
-#  (1/(1+exp(-b2*(x-b1)))*(1-(1/(1+exp(-b4*(x-b3))))))/1
-#}
+# double logistic function for selectivity
+double_norm <- function(x, b1=300, b2=0.02, b3=400, b4=0.02){
+  (1/(1+exp(-b2*(x-b1)))*(1-(1/(1+exp(-b4*(x-b3))))))/1
+}
 #curve(double_norm(x), xlim = c(0,700), ylim=c(0,1))
 
+# 各体長の選択率に従って、ベルヌーイ分布で0、１で返す
+rBern <- function(ss)sample(x = c(0,1), size = 1, prob = c((1-ss),ss))
+#double_norm(Sample_true$length)[10] %>% rBern()
 
-sel_id <- which(Sample_true$length>=300 & Sample_true$length<=600)
-random_label <- sample(sel_id, 10000) %>% sort()
-Catch_true <- Sample_true[random_label,]
+length_tmp2 <- double_norm(Sample_true$length)
+C_0or1 <- numeric()
+for (i in 1:length(length_tmp2)) {
+  C_0or1[i] <- rBern(length_tmp2[i])
+}
+Catch_true <- Sample_true[which(C_0or1==1),]
+
+
+###////////////////////////////////////////////////////////////###
+#sel_id <- which(Sample_true$length>=300 & Sample_true$length<=600)
+#random_label <- sample(sel_id, 10000) %>% sort()
+#Catch_true <- Sample_true[random_label,]
+###////////////////////////////////////////////////////////////###
 
 hist(Catch_true$age)
 prob_Catch_true <- Catch_true$age %>% floor() %>% table()%>% prop.table()

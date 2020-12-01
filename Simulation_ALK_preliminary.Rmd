@@ -121,20 +121,38 @@ Sample_true <- data.frame(id = 1:length(age_vec_true),
 
 ## 漁獲物の抽出
 
-アイデアわかなかったので、300mm-600mmがランダムに1万匹漁獲される
+1. 選択曲線にはダブルロジスティック関数を仮定（延縄なので）
 
-選択曲線がいいのだけど、どう匹数データに換算するか知恵が足りなかった
+2. 先の資源集団の体長組成にダブルロジスティック関数を当てはめて、各体長の選択率を算出
 
-だって、選択曲線ってあくまで確率だし、選択曲線全てかけて最終的に10000とれるように設定するのも筋が違う気がするし
+3. その選択率をもとに、ベルヌーイ分布で生成
+
+- 0: 漁獲せず
+- 1: 漁獲される
+
 
 ```{r}
 
-sel_id <- which(Sample_true$length>=300 & Sample_true$length<=600)
-random_label <- sample(sel_id, 10000) %>% sort()
-Catch_true <- Sample_true[random_label,]
+# double logistic function for selectivity
+double_norm <- function(x, b1=300, b2=0.02, b3=400, b4=0.02){
+  (1/(1+exp(-b2*(x-b1)))*(1-(1/(1+exp(-b4*(x-b3))))))/1
+}
+curve(double_norm(x), xlim = c(0,700), ylim=c(0,1))
+
+# 各体長の選択率に従って、ベルヌーイ分布で0、１で返す
+rBern <- function(ss)sample(x = c(0,1), size = 1, prob = c((1-ss),ss))
+
+
+length_tmp2 <- double_norm(Sample_true$length)
+C_0or1 <- numeric()
+for (i in 1:length(length_tmp2)) {
+  C_0or1[i] <- rBern(length_tmp2[i])
+}
+Catch_true <- Sample_true[which(C_0or1==1),]
 
 hist(Catch_true$age)
-(prob_Catch_true <- Catch_true$age %>% floor() %>% table()%>% prop.table())
+prob_Catch_true <- Catch_true$age %>% floor() %>% table()%>% prop.table()
+c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9]))
 
 ```
 
@@ -303,7 +321,7 @@ for(bb in 1:length(bin_sim)){
 
 for(i in 1:10){
   boxplot(res_ALKest[[i]])
-  points(1:5, prob_Catch_true[1:5], col="red", pch=16, cex=1.6)
+  points(1:5, c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9])), col="red", pch=16, cex=1.6)
 }
 
 ```

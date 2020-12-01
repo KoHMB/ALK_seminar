@@ -110,25 +110,45 @@ style="color: red; ">分散に線形構造加えると、対数正規の補正�
 漁獲物の抽出
 ------------
 
-アイデアわかなかったので、300mm-600mmがランダムに1万匹漁獲される
+1.  選択曲線にはダブルロジスティック関数を仮定（延縄なので）
 
-選択曲線がいいのだけど、どう匹数データに換算するか知恵が足りなかった
+2.  先の資源集団の体長組成にダブルロジスティック関数を当てはめて、各体長の選択率を算出
 
-だって、選択曲線ってあくまで確率だし、選択曲線全てかけて最終的に10000とれるように設定するのも筋が違う気がするし
+3.  その選択率をもとに、ベルヌーイ分布で生成
 
-    sel_id <- which(Sample_true$length>=300 & Sample_true$length<=600)
-    random_label <- sample(sel_id, 10000) %>% sort()
-    Catch_true <- Sample_true[random_label,]
+-   0: 漁獲せず
+-   1: 漁獲される
 
-    hist(Catch_true$age)
+<!-- -->
+
+    # double logistic function for selectivity
+    double_norm <- function(x, b1=300, b2=0.02, b3=400, b4=0.02){
+      (1/(1+exp(-b2*(x-b1)))*(1-(1/(1+exp(-b4*(x-b3))))))/1
+    }
+    curve(double_norm(x), xlim = c(0,700), ylim=c(0,1))
 
 ![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-4-1.png)
 
-    (prob_Catch_true <- Catch_true$age %>% floor() %>% table()%>% prop.table())
+    # 各体長の選択率に従って、ベルヌーイ分布で0、１で返す
+    rBern <- function(ss)sample(x = c(0,1), size = 1, prob = c((1-ss),ss))
 
-    ## .
-    ##      0      1      2      3      4      5      6      7      8 
-    ## 0.0125 0.2909 0.2828 0.1993 0.1318 0.0641 0.0169 0.0016 0.0001
+
+    length_tmp2 <- double_norm(Sample_true$length)
+    C_0or1 <- numeric()
+    for (i in 1:length(length_tmp2)) {
+      C_0or1[i] <- rBern(length_tmp2[i])
+    }
+    Catch_true <- Sample_true[which(C_0or1==1),]
+
+    hist(Catch_true$age)
+
+![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-4-2.png)
+
+    prob_Catch_true <- Catch_true$age %>% floor() %>% table()%>% prop.table()
+    c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9]))
+
+    ##          0          1          2          3            
+    ## 0.08329825 0.33974860 0.23377639 0.15522945 0.18794731
 
 Length frequencyサンプルの抽出
 ------------------------------
@@ -145,12 +165,12 @@ Length frequencyサンプルの抽出
     head(LF_mat_true)
 
     ##      id      age   length bin_L
-    ## 1 13089 2.338734 427.5456   420
-    ## 2  1513 1.617907 373.1175   360
-    ## 3  5625 1.598441 410.1616   400
-    ## 4 19204 2.417651 488.4532   480
-    ## 5 44633 1.630511 358.0441   340
-    ## 6 22104 2.227879 394.7670   380
+    ## 1 20952 1.269209 317.2955   300
+    ## 2 18343 1.854035 317.8650   300
+    ## 3 52144 4.406723 408.0459   400
+    ## 4 34490 3.019120 380.6883   380
+    ## 5 35063 3.457719 384.7201   380
+    ## 6 43480 4.194551 379.8247   360
 
 Age-lengthサブサンプルの抽出
 ----------------------------
@@ -191,8 +211,8 @@ Age-lengthサブサンプルの抽出
     table(AL_mat$bin_L)
 
     ## 
-    ## 300 320 340 360 380 400 420 440 460 480 500 520 540 560 580 
-    ##  10  10  10  10  10  10  10  10  10  10   8   6   7   6   6
+    ## 180 200 220 240 260 280 300 320 340 360 380 400 420 440 460 480 500 520 560 
+    ##   3   4   6   8  10  10  10  10  10  10  10  10  10   9   2   2   3   2   2
 
 ALKの計算
 ---------
@@ -212,12 +232,12 @@ ALKの計算
     length_n <- xtabs(~bin_L, data = LF_mat_true)
     alkAgeDist(ALK_est, lenA.n = rowSums(ALK_freq), len.n = length_n)
 
-    ##   age   prop          se
-    ## 1   0 0.0080 0.008226786
-    ## 2   1 0.2555 0.042031115
-    ## 3   2 0.2330 0.037873608
-    ## 4   3 0.2685 0.040873657
-    ## 5   4 0.2350 0.038989646
+    ##   age   prop         se
+    ## 1   0 0.0680 0.01933875
+    ## 2   1 0.3385 0.04546710
+    ## 3   2 0.2350 0.04190941
+    ## 4   3 0.1685 0.03671508
+    ## 5   4 0.1900 0.03669506
 
 ざっとこんな感じです
 
@@ -298,7 +318,7 @@ ALKの計算
 
     for(i in 1:10){
       boxplot(res_ALKest[[i]])
-      points(1:5, prob_Catch_true[1:5], col="red", pch=16, cex=1.6)
+      points(1:5, c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9])), col="red", pch=16, cex=1.6)
     }
 
 ![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-1.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-2.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-3.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-4.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-5.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-6.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-7.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-8.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-9.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-9-10.png)

@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(magrittr)
 library(FSA)
-options(digits=3)  
+ 
 ```
 
 # 目的
@@ -518,6 +518,114 @@ for(i in 1:10){
   mtext(side = 3, line=1, outer=T, text = title_tmp, cex=2)
 }
 
+
+```
+
+
+# ランダムにAge-lengthサブサンプルの抽出（VB2: 加法誤差バージョン）
+
+意図として、
+
+- ビン幅狭: 精度は高いけど、ALK計算できないパターンの出現 
+- ビン幅広: 精度は低いけど、周辺のビンサイズとマスクし合ってALK計算出来る 
+
+この2者のトレードオフを見よう
+
+```{r}
+
+bin_sim <- seq(10,100,10)
+age_label <- c(0,1,2,3,"4+") %>% as.character()
+iteration <- 100
+n_sample1 <- 200
+n_sample2 <- 100
+res_ALKest <- res_ALKse <- LF_mat_sim <- AL_mat_sim <- list()
+est_mat <- se_mat <- matrix(NA, ncol = 5, nrow = iteration)
+
+for(bb in 1:length(bin_sim)){
+  for (ite in 1:iteration) {
+    sample1_true <- sample(1:length(Catch_true$id), n_sample1)
+  
+    ## length frequency sample ----------------------------- ##
+    LF_mat_true <- data.frame(id = Catch_true$id[sample1_true],
+                              age = Catch_true$age[sample1_true],
+                              length = Catch_true$length[sample1_true]
+    )
+    LF_mat_true %<>% mutate(bin_L = lencat(length, w=bin_sim[bb]))
+    LF_mat_true$bin_L[(LF_mat_true$bin_L>=max_length)] <- max_length
+    
+    ## age-length sample ----------------------------- ##
+    id_tmp <- sample(1:length(LF_mat_true$id), n_sample2) %>% sort()
+    age_tmp <- LF_mat_true$age[id_tmp]
+    plus_tmp <- cbind(age_tmp, rep(NA, length(age_tmp)))
+    for (pp in 1:length(age_tmp)) {
+      plus_tmp[pp,2] <- if(plus_tmp[pp,1]>=max_age)max_age else plus_tmp[pp,1]
+    }
+    AL_mat <- data.frame(id = id_tmp,
+                         age = floor(plus_tmp[,2])+1,
+                         length = LF_mat_true$length[id_tmp],
+                         bin_L = LF_mat_true$bin_L[id_tmp])
+    
+    ## calculation ALK
+    ALK_freq <- xtabs(~bin_L + age, data = AL_mat)
+    ALK_est <- prop.table(ALK_freq, margin = 1)
+    length_n <- xtabs(~bin_L, data = LF_mat_true)
+    res_ALK <- alkAgeDist(ALK_est, lenA.n = rowSums(ALK_freq), len.n = length_n) %>% try(silent = TRUE)
+    
+    if(class(res_ALK) == "try-error"){
+      est_mat[ite,] <- NA
+      se_mat[ite,] <- NA
+    } else {
+      if(!length(res_ALK$prop)==5){
+        est_mat[ite,] <- c(rep(0, (5-length(res_ALK$prop))), res_ALK$prop)  
+        se_mat[ite,] <- c(rep(0, (5-length(res_ALK$prop))), res_ALK$se)     
+      } else {
+        est_mat[ite,] <- res_ALK$prop
+        se_mat[ite,] <- res_ALK$se
+      }  
+    }
+    
+    ## back-up of samples
+    LF_mat_sim[[(ite-1)*length(bin_sim)+bb]] <- LF_mat_true
+    AL_mat_sim[[(ite-1)*length(bin_sim)+bb]] <- AL_mat
+  }#for(ite)
+  colnames(est_mat) <- colnames(se_mat) <- age_label
+  res_ALKest[[bb]] <- est_mat
+  res_ALKse[[bb]] <- se_mat
+}#for(bb)
+
+
+```
+
+
+```{r}
+
+par(oma=c(0,0,3,0), mfrow=c(1,2))
+tt <- c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9]))
+for(i in 1:10){
+  if(sum(is.na(res_ALKest[[i]])) == length(bin_sim)*length(age_label))break
+  title_tmp <- paste0("Bin=",bin_sim[i]," (", round(bin_sim[i]/L_inf_true, digits = 3),"*L_inf)")
+  boxplot(res_ALKest[[i]], main = "Estimates", ylab = "Prob.")
+  points(1:5, c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9])), col="red", pch=16, cex=1.6)
+  relative_bias <- apply(res_ALKest[[i]], 1, function(x){(x-tt)/tt})
+  boxplot(t(relative_bias), main = "Relative error")
+  abline(h = 0, lwd = 1.5, col = "red")
+
+  mtext(side = 3, line=1, outer=T, text = title_tmp, cex=2)
+}
+
+
+```
+
+
+## age propertiesの推定可能割合
+
+```{r}
+
+ageprop <- numeric()
+for(i in 1:10)ageprop[i] <- (500 - (is.na(res_ALKest[[i]]) %>% sum())) /500
+ageprop <- as.data.frame(ageprop) %>% t()
+colnames(ageprop) <- bin_sim
+knitr::kable(ageprop)
 
 ```
 

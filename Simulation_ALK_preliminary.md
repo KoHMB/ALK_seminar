@@ -17,6 +17,9 @@
     加法誤差バージョン）](#ビン幅を変えての計算vb2-加法誤差バージョン)
     -   [資源集団の生成と体長データの生成](#資源集団の生成と体長データの生成-1)
     -   [漁獲物の抽出](#漁獲物の抽出-1)
+-   [ランダムにAge-lengthサブサンプルの抽出（VB2:
+    加法誤差バージョン）](#ランダムにage-lengthサブサンプルの抽出vb2-加法誤差バージョン)
+    -   [age propertiesの推定可能割合](#age-propertiesの推定可能割合)
 -   [メモ](#メモ)
 
 目的
@@ -190,8 +193,8 @@
     prob_Catch_true <- Catch_true$age %>% floor() %>% table()%>% prop.table()
     c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9]))
 
-    ##      0      1      2      3        
-    ## 0.0807 0.3506 0.2316 0.1538 0.1833
+    ##          0          1          2          3            
+    ## 0.07946618 0.34152260 0.23293904 0.15644525 0.18962693
 
 Length frequencyサンプルの抽出
 ------------------------------
@@ -207,13 +210,13 @@ Length frequencyサンプルの抽出
     LF_mat_true$bin_L[(LF_mat_true$bin_L>=max_length)] <- max_length
     head(LF_mat_true)
 
-    ##      id   age length bin_L
-    ## 1 10508 1.359    306   300
-    ## 2 42700 2.138    409   400
-    ## 3 21151 0.538    202   200
-    ## 4 45005 2.491    407   400
-    ## 5 29434 2.505    424   420
-    ## 6 31565 4.074    372   360
+    ##      id      age   length bin_L
+    ## 1 49257 4.761013 354.1858   340
+    ## 2 42098 5.108582 372.3381   360
+    ## 3 41153 2.310927 435.0622   420
+    ## 4 25613 1.769791 400.8490   400
+    ## 5 26204 2.507887 367.9251   360
+    ## 6 17873 2.478367 426.4484   420
 
 Age-lengthサブサンプルの抽出
 ----------------------------
@@ -254,8 +257,8 @@ Age-lengthサブサンプルの抽出
     table(AL_mat$bin_L)
 
     ## 
-    ## 180 200 220 240 260 280 300 320 340 360 380 400 420 440 460 480 520 620 
-    ##   3   4   4   5  10  10  10  10  10  10  10  10  10   8   4   3   1   1
+    ## 120 180 200 220 240 260 280 300 320 340 360 380 400 420 440 460 480 500 520 560 
+    ##   1   2   3   6   8  10  10  10  10  10  10  10  10  10   8   3   2   2   1   1
 
 ALKの計算
 ---------
@@ -275,12 +278,12 @@ ALKの計算
     length_n <- xtabs(~bin_L, data = LF_mat_true)
     alkAgeDist(ALK_est, lenA.n = rowSums(ALK_freq), len.n = length_n)
 
-    ##   age   prop     se
-    ## 1   0 0.0655 0.0195
-    ## 2   1 0.3630 0.0478
-    ## 3   2 0.2530 0.0439
-    ## 4   3 0.1220 0.0311
-    ## 5   4 0.1965 0.0411
+    ##   age   prop         se
+    ## 1   0 0.0820 0.02420093
+    ## 2   1 0.3595 0.04829055
+    ## 3   2 0.2430 0.04386347
+    ## 4   3 0.1380 0.03532435
+    ## 5   4 0.1775 0.03741836
 
 ざっとこんな感じです
 
@@ -431,8 +434,8 @@ Relative errorで見るとかなり優秀
     prob_Catch_true <- Catch_true$age %>% floor() %>% table()%>% prop.table()
     c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9]))
 
-    ##      0      1      2      3        
-    ## 0.0797 0.4224 0.2519 0.1243 0.1216
+    ##          0          1          2          3            
+    ## 0.08350432 0.42243363 0.24877200 0.12385749 0.12143257
 
     bin_sim <- seq(10,100,10)
     age_label <- c(0,1,2,3,"4+") %>% as.character()
@@ -517,6 +520,135 @@ Relative errorで見るとかなり優秀
     }
 
 ![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-1.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-2.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-3.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-4.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-5.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-6.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-7.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-8.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-9.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-13-10.png)
+
+ランダムにAge-lengthサブサンプルの抽出（VB2: 加法誤差バージョン）
+=================================================================
+
+意図として、
+
+-   ビン幅狭: 精度は高いけど、ALK計算できないパターンの出現
+-   ビン幅広:
+    精度は低いけど、周辺のビンサイズとマスクし合ってALK計算出来る
+
+この2者のトレードオフを見よう
+
+    bin_sim <- seq(10,100,10)
+    age_label <- c(0,1,2,3,"4+") %>% as.character()
+    iteration <- 100
+    n_sample1 <- 200
+    n_sample2 <- 100
+    res_ALKest <- res_ALKse <- LF_mat_sim <- AL_mat_sim <- list()
+    est_mat <- se_mat <- matrix(NA, ncol = 5, nrow = iteration)
+
+    for(bb in 1:length(bin_sim)){
+      for (ite in 1:iteration) {
+        sample1_true <- sample(1:length(Catch_true$id), n_sample1)
+      
+        ## length frequency sample ----------------------------- ##
+        LF_mat_true <- data.frame(id = Catch_true$id[sample1_true],
+                                  age = Catch_true$age[sample1_true],
+                                  length = Catch_true$length[sample1_true]
+        )
+        LF_mat_true %<>% mutate(bin_L = lencat(length, w=bin_sim[bb]))
+        LF_mat_true$bin_L[(LF_mat_true$bin_L>=max_length)] <- max_length
+        
+        ## age-length sample ----------------------------- ##
+        id_tmp <- sample(1:length(LF_mat_true$id), n_sample2) %>% sort()
+        age_tmp <- LF_mat_true$age[id_tmp]
+        plus_tmp <- cbind(age_tmp, rep(NA, length(age_tmp)))
+        for (pp in 1:length(age_tmp)) {
+          plus_tmp[pp,2] <- if(plus_tmp[pp,1]>=max_age)max_age else plus_tmp[pp,1]
+        }
+        AL_mat <- data.frame(id = id_tmp,
+                             age = floor(plus_tmp[,2])+1,
+                             length = LF_mat_true$length[id_tmp],
+                             bin_L = LF_mat_true$bin_L[id_tmp])
+        
+        ## calculation ALK
+        ALK_freq <- xtabs(~bin_L + age, data = AL_mat)
+        ALK_est <- prop.table(ALK_freq, margin = 1)
+        length_n <- xtabs(~bin_L, data = LF_mat_true)
+        res_ALK <- alkAgeDist(ALK_est, lenA.n = rowSums(ALK_freq), len.n = length_n) %>% try(silent = TRUE)
+        
+        if(class(res_ALK) == "try-error"){
+          est_mat[ite,] <- NA
+          se_mat[ite,] <- NA
+        } else {
+          if(!length(res_ALK$prop)==5){
+            est_mat[ite,] <- c(rep(0, (5-length(res_ALK$prop))), res_ALK$prop)  
+            se_mat[ite,] <- c(rep(0, (5-length(res_ALK$prop))), res_ALK$se)     
+          } else {
+            est_mat[ite,] <- res_ALK$prop
+            se_mat[ite,] <- res_ALK$se
+          }  
+        }
+        
+        ## back-up of samples
+        LF_mat_sim[[(ite-1)*length(bin_sim)+bb]] <- LF_mat_true
+        AL_mat_sim[[(ite-1)*length(bin_sim)+bb]] <- AL_mat
+      }#for(ite)
+      colnames(est_mat) <- colnames(se_mat) <- age_label
+      res_ALKest[[bb]] <- est_mat
+      res_ALKse[[bb]] <- se_mat
+    }#for(bb)
+
+    par(oma=c(0,0,3,0), mfrow=c(1,2))
+    tt <- c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9]))
+    for(i in 1:10){
+      if(sum(is.na(res_ALKest[[i]])) == length(bin_sim)*length(age_label))break
+      title_tmp <- paste0("Bin=",bin_sim[i]," (", round(bin_sim[i]/L_inf_true, digits = 3),"*L_inf)")
+      boxplot(res_ALKest[[i]], main = "Estimates", ylab = "Prob.")
+      points(1:5, c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9])), col="red", pch=16, cex=1.6)
+      relative_bias <- apply(res_ALKest[[i]], 1, function(x){(x-tt)/tt})
+      boxplot(t(relative_bias), main = "Relative error")
+      abline(h = 0, lwd = 1.5, col = "red")
+
+      mtext(side = 3, line=1, outer=T, text = title_tmp, cex=2)
+    }
+
+![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-1.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-2.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-3.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-4.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-5.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-6.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-7.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-8.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-9.png)![](Simulation_ALK_preliminary_files/figure-markdown_strict/unnamed-chunk-15-10.png)
+
+age propertiesの推定可能割合
+----------------------------
+
+    ageprop <- numeric()
+    for(i in 1:10)ageprop[i] <- (500 - (is.na(res_ALKest[[i]]) %>% sum())) /500
+    ageprop <- as.data.frame(ageprop) %>% t()
+    colnames(ageprop) <- bin_sim
+    knitr::kable(ageprop)
+
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: right;">10</th>
+<th style="text-align: right;">20</th>
+<th style="text-align: right;">30</th>
+<th style="text-align: right;">40</th>
+<th style="text-align: right;">50</th>
+<th style="text-align: right;">60</th>
+<th style="text-align: right;">70</th>
+<th style="text-align: right;">80</th>
+<th style="text-align: right;">90</th>
+<th style="text-align: right;">100</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ageprop</td>
+<td style="text-align: right;">0.01</td>
+<td style="text-align: right;">0.11</td>
+<td style="text-align: right;">0.26</td>
+<td style="text-align: right;">0.38</td>
+<td style="text-align: right;">0.43</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">0.51</td>
+<td style="text-align: right;">0.68</td>
+<td style="text-align: right;">0.68</td>
+<td style="text-align: right;">0.66</td>
+</tr>
+</tbody>
+</table>
 
 メモ
 ====

@@ -1,0 +1,327 @@
+---
+title: "ALK推定時のビンサイズ最適化解析 -成長関数のパラメータの違いとALKビンサイズ-"
+author: "Kohei Hamabe"
+date: "2020/11/27"
+output: 
+  md_document:
+    toc: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(magrittr)
+library(FSA)
+ 
+```
+
+# 目的
+
+- ALKを得る際に、どのくらいの体長ビン幅が推定上最適なのか知ること
+  - (正直、細かければ細かいほうがいいという辺りだとは思う)
+  - 例えばCV10%で推定結果を得るには?みたいにするのがベターかな
+- 成長関数の各パラメータの値と最適ビン幅の関係の把握
+  - L_infの10%体長とかそんな風に得られたら面白いかな
+
+## 本MDファイルの目的
+
+- 成長モデルのパラメータKの値を変える
+- その場合の最適ビンサイズの違いを考える
+
+
+
+# 解析の流れ
+
+1. 5万匹くらいの資源の全体を設定
+
+2. 年齢データがあるから、体長に変換する
+
+3. 体長についての選択曲線から漁獲物を抽出(上手いアイデアなかったのでとりあえず300-500mmをランダム抽出)
+
+4. 1万匹の漁獲サンプルからlength frequencyサンプル200を抽出
+
+5. さらに各体長ビンから10尾ずつ年齢査定をしてALKの計算
+
+6. 4と5を繰り返してシミュレーション
+
+![シミュレーションのフローチャート図](Flowchat_ALKsimulation.png)
+
+
+# 成長モデル（von Bertalanffy）
+
+ベースはトラフグ瀬戸内系群を参考にしてみた。
+
+加法誤差モデルの`VB2`を使っている
+
+
+```{r}
+
+L_inf_true <- 560
+K_true_vec <- seq(0.3, 0.9, 0.05)
+a0_true <- -0.144
+
+VB2 <- function(x, L_inf=L_inf_true, K=K_true, a0=a0_true, 
+               a_sd=5, b_sd=15, deterministic = FALSE){
+  if(isTRUE(deterministic)){
+    L_inf*(1-exp(-K*(x-a0)))
+  } else {
+    sd <- a_sd + b_sd*x
+    L_inf*(1-exp(-K*(x-a0)))+rnorm(1, 0, sd)
+  }
+}
+
+
+curve(VB2(x, K = K_true_vec[7], deterministic = TRUE), xlim = c(0,5), ylim = c(0,1000),
+      ylab = "Length (mm)", xlab = "Age", lwd = 3)
+par(new=T)
+curve(VB2(x, K = K_true_vec[1], deterministic = TRUE), xlim = c(0,5), ylim = c(0,1000),
+      ylab = "Length (mm)", xlab = "Age", lwd = 3, lty = 2, col = "blue")
+par(new=T)
+curve(VB2(x, K = K_true_vec[13], deterministic = TRUE), xlim = c(0,5), ylim = c(0,1000),
+      ylab = "Length (mm)", xlab = "Age", lwd = 3, lty = 3, col = "red")
+for(i in 1:100){
+  points(1,VB2(1, K = K_true_vec[7]))
+  points(2,VB2(2, K = K_true_vec[7]))
+  points(3,VB2(3, K = K_true_vec[7]))
+  points(4,VB2(4, K = K_true_vec[7]))
+  points(5,VB2(5, K = K_true_vec[7]))
+}
+legend("topleft", legend = c("K=0.3","K=0.6","K=0.9"), lty = c(2,1,3),
+       col = c("blue", "black", "red"))
+
+```
+
+#### 最大ビン幅と年齢+グループの設定
+
+```{r}
+
+max_length <-700
+max_age <-4
+
+```
+
+
+
+## 資源集団の生成と体長データの生成
+
+- なんだが漁獲組成から反映させてしまった
+- 適当に指数減少的にしてもいいのかも
+
+
+```{r}
+
+CAA_true <- c(5000,2500,2500,2300,2000)*5 # 2016年のCAA
+age1_dist <- rnorm(CAA_true[1])+1     # 1歳魚の乱数
+age2_dist <- rnorm(CAA_true[2])+2     # 2歳魚の乱数
+age3_dist <- rnorm(CAA_true[3])+3     # 3歳魚の乱数
+age4_dist <- rnorm(CAA_true[4])+4     # 4歳魚の乱数
+age5_dist <- rnorm(CAA_true[5])+5     # 5歳魚の乱数
+
+
+
+age_vec_true <- c(age1_dist, age2_dist, age3_dist, age4_dist, age5_dist)
+age_vec_true <- age_vec_true[-which(age_vec_true <= 0.5)]
+
+(CAAprob_true <- floor(age_vec_true) %>% table() %>% prop.table() %>% round(digits = 3))
+
+```
+
+```{r}
+
+Sample_true <- list()
+for(i in 1:length(K_true_vec)){
+  K_true <- K_true_vec[i]
+  Sample_true[[i]] <- data.frame(id = 1:length(age_vec_true), 
+                                 age = age_vec_true,
+                                 length = purrr::map(age_vec_true, VB2) %>% unlist())
+}
+
+# K=0.3
+length_age1 <- Sample_true[[1]]$length[floor(Sample_true[[1]]$age)==1]
+length_age4 <- Sample_true[[1]]$length[floor(Sample_true[[1]]$age)==4]
+par(mfrow = c(1,2), oma = c(0,0,3,0))
+hist(length_age1, xlim = c(0,1000))
+hist(length_age4, xlim = c(0,1000))
+mtext(side = 3, line=1, outer=T, text = "K = 0.3", cex=2)
+
+# K=0.6
+length_age1 <- Sample_true[[7]]$length[floor(Sample_true[[7]]$age)==1]
+length_age4 <- Sample_true[[7]]$length[floor(Sample_true[[7]]$age)==4]
+par(mfrow = c(1,2), oma = c(0,0,3,0))
+hist(length_age1, xlim = c(0,1000))
+hist(length_age4, xlim = c(0,1000))
+mtext(side = 3, line=1, outer=T, text = "K = 0.6", cex=2)
+
+```
+
+
+## 必要な関数の定義
+
+```{r}
+
+# double logistic function for selectivity
+double_norm <- function(x, b1=300, b2=0.02, b3=400, b4=0.02){
+  (1/(1+exp(-b2*(x-b1)))*(1-(1/(1+exp(-b4*(x-b3))))))/1 
+}
+
+# 各体長の選択率に従って、ベルヌーイ分布で0、１で返す
+rBern <- function(ss)sample(x = c(0,1), size = 1, prob = c((1-ss),ss))
+
+```
+
+
+
+
+# 解析
+
+以下3点が、for文でシミュレーションされる
+
+- 選択曲線による漁獲物の抽出
+- length frequencyサンプルの抽出
+- age-lengthサブサンプルの抽出
+
+## K = 0.3
+
+
+```{r}
+
+n_K <- 1
+
+length_tmp2 <- double_norm(Sample_true[[n_K]]$length)
+C_0or1 <- numeric()
+for (i in 1:length(length_tmp2)) {
+  C_0or1[i] <- rBern(length_tmp2[i])
+}
+Catch_true <- Sample_true[[n_K]][which(C_0or1==1),]
+
+hist(Catch_true$age)
+prob_Catch_true <- Catch_true$age %>% floor() %>% table()%>% prop.table()
+c(prob_Catch_true[1:4], sum(prob_Catch_true[5:length(prob_Catch_true)]))
+
+```
+
+```{r}
+
+bin_sim <- seq(10,100,10)
+age_label <- c(0,1,2,3,"4+") %>% as.character()
+iteration <- 100
+n_sample1 <- 200
+n_sample2 <- 100
+res_ALKest <- res_ALKse <- LF_mat_sim <- AL_mat_sim <- list()
+est_mat <- se_mat <- matrix(NA, ncol = 5, nrow = iteration)
+
+for(bb in 1:length(bin_sim)){
+  for (ite in 1:iteration) {
+    sample1_true <- sample(1:length(Catch_true$id), n_sample1)
+  
+    ## length frequency sample ----------------------------- ##
+    LF_mat_true <- data.frame(id = Catch_true$id[sample1_true],
+                              age = Catch_true$age[sample1_true],
+                              length = Catch_true$length[sample1_true]
+    )
+    LF_mat_true %<>% mutate(bin_L = lencat(length, w=bin_sim[bb]))
+    LF_mat_true$bin_L[(LF_mat_true$bin_L>=max_length)] <- max_length
+    
+    ## age-length sample ----------------------------- ##
+    id_tmp <- sample(1:length(LF_mat_true$id), n_sample2) %>% sort()
+    age_tmp <- LF_mat_true$age[id_tmp]
+    plus_tmp <- cbind(age_tmp, rep(NA, length(age_tmp)))
+    for (pp in 1:length(age_tmp)) {
+      plus_tmp[pp,2] <- if(plus_tmp[pp,1]>=max_age)max_age else plus_tmp[pp,1]
+    }
+    AL_mat <- data.frame(id = id_tmp,
+                         age = floor(plus_tmp[,2])+1,
+                         length = LF_mat_true$length[id_tmp],
+                         bin_L = LF_mat_true$bin_L[id_tmp])
+    
+    ## calculation ALK
+    ALK_freq <- xtabs(~bin_L + age, data = AL_mat)
+    ALK_est <- prop.table(ALK_freq, margin = 1)
+    length_n <- xtabs(~bin_L, data = LF_mat_true)
+    res_ALK <- try(alkAgeDist(ALK_est, lenA.n = rowSums(ALK_freq), len.n = length_n), silent = TRUE)
+    
+    if(class(res_ALK) == "try-error"){
+      est_mat[ite,] <- NA
+      se_mat[ite,] <- NA
+    } else {
+      if(!length(res_ALK$prop)==5){
+        est_mat[ite,] <- c(rep(0, (5-length(res_ALK$prop))), res_ALK$prop)  
+        se_mat[ite,] <- c(rep(0, (5-length(res_ALK$prop))), res_ALK$se)     
+      } else {
+        est_mat[ite,] <- res_ALK$prop
+        se_mat[ite,] <- res_ALK$se
+      }  
+    }
+    
+    ## back-up of samples
+    LF_mat_sim[[(ite-1)*length(bin_sim)+bb]] <- LF_mat_true
+    AL_mat_sim[[(ite-1)*length(bin_sim)+bb]] <- AL_mat
+    rm(res_ALK)
+  }#for(ite)
+  
+  colnames(est_mat) <- colnames(se_mat) <- age_label
+  res_ALKest[[bb]] <- est_mat
+  res_ALKse[[bb]] <- se_mat
+  
+}#for(bb)
+
+
+
+```
+
+
+```{r}
+
+tt <- c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9]))
+mean_relat <- matrix(NA, ncol = length(tt), nrow = length(bin_sim))
+par(oma=c(0,0,3,0), mfrow=c(1,2))
+for(i in 1:10){
+  if(sum(is.na(res_ALKest[[i]])) == iteration*length(age_label))next
+  title_tmp <- paste0("Bin=",bin_sim[i]," (", round(bin_sim[i]/L_inf_true, digits = 3),"*L_inf)")
+  boxplot(res_ALKest[[i]], main = "Estimates", ylab = "Prob.")
+  points(1:5, c(prob_Catch_true[1:4], sum(prob_Catch_true[5:9])), col="red", pch=16, cex=1.6)
+  relative_bias <- apply(res_ALKest[[i]], 1, function(x){(x-tt)/tt})
+  boxplot(t(relative_bias), main = "Relative error")
+  abline(h = 0, lwd = 1.5, col = "red")
+  mtext(side = 3, line=1, outer=T, text = title_tmp, cex=2)
+  mean_relat[i,] <- apply(relative_bias, 1, function(x)mean(x, na.rm = T))
+}
+
+
+```
+
+
+## age propertiesの推定可能割合
+
+```{r}
+
+ageprop <- numeric()
+for(i in 1:10)ageprop[i] <- (500 - (is.na(res_ALKest[[i]]) %>% sum())) /500
+ageprop <- as.data.frame(ageprop) 
+ageprop <- cbind.data.frame(ageprop, 
+                            mean_relative_error = apply(mean_relat, 1, function(x)mean(x, na.rm = T)))
+
+
+```
+
+# メモ
+
+目的を見失っていないかチェック
+なんのためのシミュレーションなのか
+
+漁獲の箇所も乱数にした方がいいかも（選択率かけるところ）
+
+実際のバイアス要因を考える（相対誤差が優秀すぎる）
+- 測定誤差（体長・年齢）
+- サンプリング数（Age-lengthサブサンプルとかビン依存のわりに出来すぎてる）
+- 後なんだろ...
+
+
+
+
+現実に即しているようにもっと勉強する
+
+シミュレーションで自動的に計算するのと、データ見てビン幅とか調整していくのは割と解析上の相性が悪い
+
+

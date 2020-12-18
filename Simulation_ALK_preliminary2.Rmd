@@ -68,6 +68,7 @@ VB2 <- function(x, L_inf=L_inf_true, K=K_true, a0=a0_true,
   } else {
     sd <- a_sd + b_sd*x
     L_inf*(1-exp(-K*(x-a0)))+rnorm(1, 0, sd)
+    #exp(log(L_inf*(1-exp(-K*(x-a0))))+rnorm(1, 0, sd))
   }
 }
 
